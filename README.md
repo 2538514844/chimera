@@ -72,3 +72,10 @@ python work\bench\run_mc.py work\product\PrismHack-sink-r4i.jar 200 work\bench\e
 
 - **不防 dump**。类最终要以明文进入 JVM，有调试器的人总能抓到。能保证的是：没有 ResourceKey 的
   玩家破解成本很高（实测 8–20 小时未破），以及泄漏可通过水印追溯到账号。
+
+## 许可
+
+MIT，见 [`LICENSE`](LICENSE)。
+
+需要说明的是：这份代码做的事情是**保护别人的程序不被逆向**，而它自身是公开的。用它保护自己的
+构建没有问题；但把 MIT 当成"可以拿去声称是自己写的"是不成立的——MIT 只免除授权限制，不转移著作权。
