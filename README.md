@@ -74,5 +74,3 @@ python work\bench\run_mc.py work\product\PrismHack-sink-r4i.jar 200 work\bench\e
 
 - **不防 dump**。类最终要以明文进入 JVM，有调试器的人总能抓到。能保证的是：没有 ResourceKey 的
   玩家破解成本很高（实测 8–20 小时未破），以及泄漏可通过水印追溯到账号。
-- 自托管模式下**运营方持有 ResourceKey**，因此运营方能解开自己的构建。这是部署模式的必然，
-  不是缺陷。
