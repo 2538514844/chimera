@@ -64,11 +64,9 @@ python work\bench\run_mc.py work\product\PrismHack-sink-r4i.jar 200 work\bench\e
 
 | 文档 | 内容 |
 |---|---|
-| `docs/GOAL-R4.md` | 本轮目标与最终验收结果 |
-| `docs/REDTEAM-ROUNDS-R4-2026-10-23.md` | 两轮红队核查 + 攻击链实测 + 加固方案取舍 |
-| `docs/AUDIT-R4-2026-10-22.md` | 源码审计：发现、修复、验证矩阵 |
-| `docs/HANDOVER-2026-10-22-SECURITY-B.md` | 技术记录与证据（§0–§19） |
-| `docs/MEMORY-INDEX.md` | 全部文档索引 + 运行手册 |
+| [`DESIGN.md`](DESIGN.md) | 设计文档：威胁模型、七层机制、每一处取舍的理由、已知边界 |
+
+内部笔记（审计记录、红队报告、交付文档、运维手册）不随仓库发布。
 
 ## 已知边界
 
