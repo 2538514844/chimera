@@ -1,0 +1,114 @@
+# ---- build outputs / artifacts -------------------------------------------
+**/build/
+**/.gradle/
+**/out/
+out-*/
+*.jar
+*.dll
+*.exe
+*.rar
+*.zip
+*.7z
+*.class
+*.bin
+*.log
+*.csv
+*.db
+*.mv.db
+
+# ---- local workspace (heavy, machine specific) --------------------------
+work/
+dist*/
+logs/
+PrismHack/
+net/
+undefined/
+%SystemDrive%/
+.mixin.out/
+.build-output/
+*.ps1.log
+
+# keep the small, reusable harness scripts out of the work/ exclusion
+!work/bench/
+work/bench/*
+!work/bench/*.ps1
+!work/bench/*.py
+!work/bench/*.md
+
+# ---- toolchains / runtimes ---------------------------------------------
+tools/gradle-8.10.2/
+tools/gradle-home/
+tools/msys2-mingw64/
+tools/jdk*/
+tools/*/out/
+
+# ---- secrets & runtime state ------------------------------------------
+chimera-license-server/data/
+**/license.dat
+**/.chimera/
+**/data/keys/
+**/*.pem
+**/*.p12
+**/.env
+**/local.properties
+
+# ---- misc --------------------------------------------------------------
+__pycache__/
+*.pyc
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# ---- third party build deps & local junk -------------------------------
+tools/openssl-*/
+tools/strawberry/
+tools/oc/
+hs_err_pid*.log
+replay_pid*.log
+*.obj
+tmp-*.py
+G*vibecoding*.log
+*.probe
+
+# verification fixtures: keep sources, drop build artifacts
+verification/**/*.jar
+verification/**/*.class
+verification/**/.gradle/
+verification/**/build/
+
+# verification run output noise
+*.err
+*.out
+
+# ---- key material must never be committed ----------------------------------
+# data/ was already excluded, but a second working copy (data-fresh/) slipped past it and contains
+# a live Ed25519 private key and the ResourceKey. Match any directory that starts with "data".
+chimera-license-server/data*/
+**/data*/keys/
+*.pk8
+resource.key
+operator-credentials.txt
+
+# ---- release bundles -------------------------------------------------------
+release-*/
+chimera-release-*.zip
+dist-client-*.zip
+
+# ---- toolchain archives and build leftovers --------------------------------
+tools/openssl-*.tar.gz
+tools/openssl*.nupkg
+tools/dump-classes/out/
+chimera_ui.exp
+chimera_ui.lib
+
+# the gradle wrapper jar is a source artifact, not a build output
+!chimera-obfuscator/gradle/wrapper/gradle-wrapper.jar
+
+# ---- not part of the open-source repository --------------------------------
+# Internal notes, the build/ops scripts (they carry deployment-specific values), and the fixture
+# projects stay local. Ignoring them means a careless "git add ." cannot pull them back in.
+/docs/
+/tools/
+/verification/

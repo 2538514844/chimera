@@ -1,0 +1,177 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'java-gradle-plugin'
+    id 'com.gradleup.shadow' version '8.3.5'
+}
+
+group = 'dev.chimera'
+version = '0.1.0'
+
+repositories { mavenCentral() }
+
+dependencies {
+    implementation 'org.ow2.asm:asm:9.7.1'
+    implementation 'org.ow2.asm:asm-tree:9.7.1'
+    implementation 'org.ow2.asm:asm-commons:9.7.1'
+    implementation 'org.ow2.asm:asm-util:9.7.1'
+    implementation 'org.ow2.asm:asm-analysis:9.7.1'
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.11.3'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainClass = 'dev.chimera.cli.Main'
+}
+
+gradlePlugin {
+    plugins {
+        chimera {
+            id = 'dev.chimera'
+            implementationClass = 'dev.chimera.gradle.ChimeraPlugin'
+        }
+    }
+}
+
+shadowJar {
+    archiveBaseName = 'chimera'
+    archiveClassifier = 'all'
+    mergeServiceFiles()
+    manifest {
+        attributes 'Main-Class': 'dev.chimera.cli.Main'
+    }
+}
+
+tasks.named('build') { dependsOn tasks.named('shadowJar') }
+
+// ---------------------------------------------------------------------------
+// B7 前置 2：发布构建硬检查 —— 禁止 legacy contentKey 路径
+//
+// 生产构建必须通过授权服务器下发 content key（SessionHandle）；legacy 入口
+// （-Dchimera.contentKey / -Pchimera.contentKey / CHIMERA_CONTENT_KEY）只允许
+// 出现在开发/演示构建。加 -Pchimera.release=true 后，检测到任一入口即失败。
+// ---------------------------------------------------------------------------
+def releaseMode = providers.gradleProperty('chimera.release')
+        .map { it.equalsIgnoreCase('true') }
+        .orElse(false)
+        .get()
+
+def legacyContentKeyFindings = { ->
+    List<String> found = []
+    String jvmValue = System.getProperty('chimera.contentKey')
+    if (jvmValue != null && !jvmValue.isBlank()) {
+        found.add("JVM system property -Dchimera.contentKey is set")
+    }
+    def gradleValue = project.findProperty('chimera.contentKey')
+    if (gradleValue != null && !gradleValue.toString().isBlank()) {
+        found.add("Gradle project property -Pchimera.contentKey is set")
+    }
+    String envValue = System.getenv('CHIMERA_CONTENT_KEY')
+    if (envValue != null && !envValue.isBlank()) {
+        found.add("environment variable CHIMERA_CONTENT_KEY is set")
+    }
+    def buildDirectory = layout.buildDirectory.get().asFile
+    [new File(buildDirectory, 'scripts'), new File(buildDirectory, 'install'),
+     file('src/main/resources')].each { root ->
+        if (root == null || !root.isDirectory()) {
+            return
+        }
+        fileTree(root).files.each { candidate ->
+            if (!candidate.isFile()) {
+                return
+            }
+            String name = candidate.name.toLowerCase(Locale.ROOT)
+            boolean launchInput = name.endsWith('.bat') || name.endsWith('.sh')
+                    || name.endsWith('.cmd') || name.endsWith('.vmoptions')
+                    || name.endsWith('.properties') || name.endsWith('.yml')
+                    || name.endsWith('.yaml') || name.endsWith('.cfg')
+            if (!launchInput) {
+                return
+            }
+            try {
+                String text = candidate.getText('UTF-8')
+                if (text.contains('-Dchimera.contentKey') || text.contains('CHIMERA_CONTENT_KEY')) {
+                    found.add("release input ${candidate}: embeds a legacy contentKey override")
+                }
+            } catch (Throwable ignored) {
+                // unreadable files are not release launch inputs we can validate
+            }
+        }
+    }
+    found
+}
+
+def verifyReleaseConfiguration = tasks.register('verifyReleaseConfiguration') {
+    group = 'verification'
+    description = 'Rejects release builds that still rely on the legacy chimera.contentKey path.'
+    doLast {
+        List<String> problems = legacyContentKeyFindings()
+        if (problems.isEmpty()) {
+            logger.lifecycle('Chimera release guard: no legacy contentKey path detected.')
+            return
+        }
+        if (releaseMode) {
+            throw new GradleException('Chimera release build rejected (B7 pre-2):\n  - '
+                    + problems.join('\n  - ')
+                    + '\nProduction artifacts must obtain the content key from the license server '
+                    + '(SessionHandle); remove the legacy contentKey property/environment override.')
+        }
+        logger.warn('Chimera: legacy contentKey path present (allowed outside release builds): '
+                + problems.join('; '))
+    }
+}
+
+tasks.named('test') { dependsOn verifyReleaseConfiguration }
+tasks.named('shadowJar') { dependsOn verifyReleaseConfiguration }
+
+def release = tasks.register('release') {
+    group = 'build'
+    description = 'Release pipeline: verify the legacy contentKey path is absent, then build the shaded jar.'
+    dependsOn verifyReleaseConfiguration
+    dependsOn tasks.named('build')
+}
+
+// ---------------------------------------------------------------------------
+// B7 pre-1: native auth DLL has two build flavours.
+//   dev     -> build/native-auth-dev (QA hooks + short TTL allowed; tests only, never shipped)
+//   release -> native/windows-x64   (QA hooks compiled out; this is the shipped DLL)
+// The release script fails when nativeExpireHandleForTest leaks into the export table.
+// ---------------------------------------------------------------------------
+def nativeAuthScript = file('scripts/build-native-auth.ps1')
+def nativeAuthSource = file('src/main/native/chimera_auth.cpp')
+
+def buildNativeDevDll = tasks.register('buildNativeDevDll', Exec) {
+    group = 'build'
+    description = 'Builds the dev/test native auth DLL (QA hooks enabled, never shipped).'
+    inputs.files(nativeAuthScript, nativeAuthSource)
+    outputs.file(layout.buildDirectory.file('native-auth-dev/chimera_auth.dll'))
+    commandLine 'powershell', '-ExecutionPolicy', 'Bypass', '-File', nativeAuthScript.absolutePath,
+            '-Configuration', 'dev'
+}
+
+def buildNativeReleaseDll = tasks.register('buildNativeReleaseDll', Exec) {
+    group = 'build'
+    description = 'Builds the release native auth DLL (QA hooks compiled out) and verifies exports.'
+    inputs.files(nativeAuthScript, nativeAuthSource)
+    outputs.file(file('native/windows-x64/chimera_auth.dll'))
+    commandLine 'powershell', '-ExecutionPolicy', 'Bypass', '-File', nativeAuthScript.absolutePath,
+            '-Configuration', 'release'
+}
+
+test {
+    useJUnitPlatform()
+    systemProperty 'chimera.test.key', 'demo-content-key'
+    def nativeDevDir = layout.buildDirectory.dir('native-auth-dev').get().asFile
+    systemProperty 'chimera.native.dev.dir', nativeDevDir.absolutePath
+    // One statically linked DLL: OpenSSL and the MinGW runtime are inside chimera_auth.dll.
+    systemProperty 'chimera.native.auth.path', new File(nativeDevDir, 'chimera_auth.dll').absolutePath
+}
+
+tasks.named('test') { dependsOn buildNativeDevDll }
+tasks.named('release') { dependsOn buildNativeReleaseDll }

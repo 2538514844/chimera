@@ -1,0 +1,13 @@
+plugins { id 'java' }
+
+dependencies { implementation project(':') }
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+jar {
+    archiveBaseName = 'demo'
+    manifest { attributes 'Main-Class': 'demo.Main' }
+}

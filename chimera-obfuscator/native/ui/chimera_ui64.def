@@ -1,0 +1,11 @@
+LIBRARY chimera_ui64
+EXPORTS
+    chimera_ui_version
+    chimera_ui_find_java
+    chimera_ui_start
+    chimera_ui_poll
+    chimera_ui_exit_code
+    chimera_ui_cancel
+    chimera_ui_last_error
+    chimera_ui_sha256
+    chimera_ui_shutdown

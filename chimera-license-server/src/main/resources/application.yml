@@ -1,0 +1,50 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: chimera-license-server
+  datasource:
+    url: jdbc:h2:file:./data/chimera;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  sql:
+    init:
+      mode: always
+
+license:
+  session-ttl-seconds: 86400
+  max-devices-per-account: 1
+  auto-bind-first-device: true
+  key-dir: data/keys
+  content-key-hex: ${CHIMERA_CONTENT_KEY_HEX:}
+  # MasterKey stays server-side; this is the long-lived key used to encrypt paid resources.
+  resource-key-hex: ${CHIMERA_RESOURCE_KEY_HEX:}
+  # Enables GET /api/v1/license/resource-key for the build pipeline (empty = disabled).
+  build-token: ${CHIMERA_BUILD_TOKEN:}
+  risk-control:
+    # Same account switching to a different HWID within this window is considered anomalous.
+    window-seconds: 5
+    # How long the anomalous HWID receives a poisoned UserContentKey on activation.
+    poison-ttl-seconds: 300
+  rate-limit:
+    max-failures: 5
+    window-seconds: 900
+  # Retention for the replay/audit tables. One client writes ~4300 rows/day, so without a sweep the
+  # H2 file grows forever. Replay protection only has to outlive a session (24h by default); 7 days
+  # leaves room for clock skew and incident investigation.
+  retention:
+    replay-days: 7
+    audit-days: 30
+    expired-session-grace-hours: 24
+    sweep-ms: 3600000
+    initial-delay-ms: 60000
+  # Self-service registration against a pre-registered HWID. Off by default: a deployment where the
+  # operator creates accounts with /admin/account does not need a public write endpoint.
+  self-register:
+    enabled: ${CHIMERA_SELF_REGISTER_ENABLED:false}
+
+logging:
+  level:
+    dev.chimera.license: INFO

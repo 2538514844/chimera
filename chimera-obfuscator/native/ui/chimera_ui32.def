@@ -1,0 +1,11 @@
+LIBRARY chimera_ui32
+EXPORTS
+    chimera_ui_version=_chimera_ui_version@8
+    chimera_ui_find_java=_chimera_ui_find_java@12
+    chimera_ui_start=_chimera_ui_start@24
+    chimera_ui_poll=_chimera_ui_poll@12
+    chimera_ui_exit_code=_chimera_ui_exit_code@4
+    chimera_ui_cancel=_chimera_ui_cancel@4
+    chimera_ui_last_error=_chimera_ui_last_error@8
+    chimera_ui_sha256=_chimera_ui_sha256@12
+    chimera_ui_shutdown=_chimera_ui_shutdown@0
